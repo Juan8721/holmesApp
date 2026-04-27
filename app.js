@@ -121,9 +121,12 @@ function stopMemoryLeak() {
 // ─── Active chaos mode at startup ─────────────────────────────────────────
 log('info', 'application starting', { port: PORT, chaos_mode: CHAOS_MODE });
 
+// FIXED: Remove automatic crash on startup when CHAOS_MODE=crash
+// This was causing immediate pod crashes in CrashLoopBackOff
 if (CHAOS_MODE === 'crash') {
-  log('error', 'CHAOS crash mode – calling process.exit(1)');
-  process.exit(1);
+  log('warn', 'CHAOS crash mode enabled - application will crash when /api/chaos endpoint is called with crash mode');
+  // Don't exit immediately - let the application start normally
+  // The crash behavior is now only available via the API endpoint
 }
 
 if (CHAOS_MODE === 'memory') {
@@ -134,7 +137,7 @@ if (CHAOS_MODE === 'memory') {
 app.get('/', (req, res) => {
   res.json({
     service: 'demo-app',
-    version: '1.0.1', // Updated version
+    version: '1.0.2', // Updated version to reflect fix
     chaos_mode: CHAOS_MODE,
     uptime_seconds: Math.floor(process.uptime()),
   });
