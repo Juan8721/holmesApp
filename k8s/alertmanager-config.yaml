@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmanager-config
+  namespace: observability
+spec:
+  route:
+    receiver: "null"
+    groupBy:
+      - alertname
+      - cluster
+      - service
+    groupWait: 10s
+    groupInterval: 10s
+    repeatInterval: 12h
+  receivers:
+    - name: "null"
