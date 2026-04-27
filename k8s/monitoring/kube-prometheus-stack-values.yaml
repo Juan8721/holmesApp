@@ -1,28 +1,21 @@
-# Kube-Prometheus-Stack Helm Values for EKS
-# 
-# This configuration disables monitoring of EKS-managed control plane components
-# to prevent false alerts like KubeSchedulerDown, KubeControllerManagerDown, etc.
-#
-# In EKS, these components are managed by AWS and not accessible for scraping:
-# - kube-scheduler
-# - kube-controller-manager  
-# - etcd
-#
-# Apply with: helm upgrade kube-prom-stack prometheus-community/kube-prometheus-stack -f kube-prometheus-stack-values.yaml
+# kube-prometheus-stack Helm values for EKS
+# This configuration is optimized for Amazon EKS clusters where control plane components
+# are managed by AWS and not directly accessible for Prometheus scraping.
 
-# Disable kube-scheduler monitoring (fixes KubeSchedulerDown alert)
+# Disable ServiceMonitor creation for EKS-managed control plane components
+# but keep the alert rules active. This prevents false alerts while maintaining
+# monitoring capabilities if endpoints become available.
+
 kubeScheduler:
-  enabled: false
-
-# Disable kube-controller-manager monitoring (prevents KubeControllerManagerDown alert)  
+  enabled: false  # Disable ServiceMonitor creation for EKS-managed scheduler
+  
 kubeControllerManager:
-  enabled: false
-
-# Disable etcd monitoring (prevents EtcdDown alert)
+  enabled: false  # Disable ServiceMonitor creation for EKS-managed controller manager
+  
 kubeEtcd:
-  enabled: false
+  enabled: false  # Disable ServiceMonitor creation for EKS-managed etcd
 
-# Keep other components enabled for EKS worker node monitoring
+# Keep these enabled as they are accessible in EKS
 kubelet:
   enabled: true
   
@@ -32,31 +25,36 @@ kubeApiServer:
 kubeProxy:
   enabled: true
 
-kubeStateMetrics:
-  enabled: true
-
-nodeExporter:
-  enabled: true
-
 # Prometheus configuration
 prometheus:
   prometheusSpec:
-    # Retain data for 15 days
-    retention: 15d
-    # Storage configuration
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: gp2
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 50Gi
+    # Keep default alert rules including KubeSchedulerDown
+    # The alert will not fire if no targets are configured
+    ruleSelector: {}
+    
+    # Configure service discovery to look for scheduler endpoints
+    # This allows monitoring if scheduler endpoints are manually created
+    additionalScrapeConfigs: |
+      - job_name: 'kube-scheduler'
+        kubernetes_sd_configs:
+        - role: endpoints
+          namespaces:
+            names:
+            - kube-system
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_service_name]
+          action: keep
+          regex: kube-scheduler
+        - source_labels: [__meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: http-metrics
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
 
-# Grafana configuration  
+# Grafana configuration
 grafana:
   enabled: true
-  persistence:
-    enabled: true
-    storageClassName: gp2
-    size: 10Gi
+  adminPassword: admin
