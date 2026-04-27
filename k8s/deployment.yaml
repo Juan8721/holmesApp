@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: demo-app
   name: demo-app
   namespace: app
+  labels:
+    app: demo-app
 spec:
   replicas: 2
   selector:
@@ -12,50 +12,50 @@ spec:
       app: demo-app
   template:
     metadata:
-      annotations:
-        prometheus.io/path: /metrics
-        prometheus.io/port: "3000"
-        prometheus.io/scrape: "true"
       labels:
         app: demo-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
-      - env:
+      - name: demo-app
+        image: 391074154333.dkr.ecr.us-east-1.amazonaws.com/demo-app:latest
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
         - name: CHAOS_MODE
-          value: none  # Explicitly set to 'none' to prevent crashes
+          value: "none"  # Fixed: Changed from 'crash' to 'none' to prevent pod crashes
         - name: CHAOS_TOKEN
-          value: workshop2024
+          value: "workshop2024"
         - name: PORT
           value: "3000"
-        image: 391074154333.dkr.ecr.us-east-1.amazonaws.com/demo-app:latest
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         livenessProbe:
-          failureThreshold: 3
           httpGet:
             path: /api/health
             port: 3000
           initialDelaySeconds: 10
           periodSeconds: 15
-          successThreshold: 1
           timeoutSeconds: 5
-        name: demo-app
-        ports:
-        - containerPort: 3000
-          name: http
-          protocol: TCP
-        readinessProbe:
           failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
           httpGet:
             path: /api/health
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 10
-          successThreshold: 1
           timeoutSeconds: 5
-        resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi
+          failureThreshold: 3
+          successThreshold: 1
       restartPolicy: Always
