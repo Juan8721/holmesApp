@@ -1,49 +1,19 @@
-# Kube-Prometheus-Stack Helm Values for EKS
-# 
-# This configuration disables monitoring of EKS-managed control plane components
-# to prevent false alerts like KubeSchedulerDown, KubeControllerManagerDown, etc.
-#
-# In EKS, these components are managed by AWS and not accessible for scraping:
-# - kube-scheduler
-# - kube-controller-manager  
-# - etcd
-#
-# Apply with: helm upgrade kube-prom-stack prometheus-community/kube-prometheus-stack -f kube-prometheus-stack-values.yaml
-
-# Disable kube-scheduler monitoring (fixes KubeSchedulerDown alert)
-kubeScheduler:
-  enabled: false
-
-# Disable kube-controller-manager monitoring (prevents KubeControllerManagerDown alert)  
 kubeControllerManager:
   enabled: false
 
-# Disable etcd monitoring (prevents EtcdDown alert)
+kubeScheduler:
+  enabled: false
+
 kubeEtcd:
   enabled: false
 
-# Keep other components enabled for EKS worker node monitoring
-kubelet:
-  enabled: true
-  
-kubeApiServer:
-  enabled: true
-  
-kubeProxy:
-  enabled: true
+# EKS clusters have managed control plane components
+# that are not accessible for direct monitoring
+# Disable these to prevent false positive alerts
 
-kubeStateMetrics:
-  enabled: true
-
-nodeExporter:
-  enabled: true
-
-# Prometheus configuration
 prometheus:
   prometheusSpec:
-    # Retain data for 15 days
-    retention: 15d
-    # Storage configuration
+    retention: 30d
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -53,10 +23,20 @@ prometheus:
             requests:
               storage: 50Gi
 
-# Grafana configuration  
 grafana:
-  enabled: true
+  adminPassword: admin123
   persistence:
     enabled: true
     storageClassName: gp2
     size: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp2
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
