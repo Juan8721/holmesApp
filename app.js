@@ -78,16 +78,31 @@ let memoryLeakArray = [];
 let memoryLeakInterval = null;
 
 function startMemoryLeak() {
-  log('warn', 'CHAOS memory leak started – growing 50 MB every 2 seconds');
+  log('warn', 'CHAOS memory leak started – growing 10 MB every 5 seconds with memory limit protection');
   memoryLeakInterval = setInterval(() => {
-    // Allocate ~50 MB per tick
-    const chunk = Buffer.alloc(50 * 1024 * 1024, 'x');
+    // Check current memory usage before allocating
+    const memUsage = process.memoryUsage();
+    const heapUsedMB = memUsage.heapUsed / 1024 / 1024;
+    const maxMemoryMB = 400; // Stay well below 512Mi limit
+    
+    if (heapUsedMB >= maxMemoryMB) {
+      log('warn', 'memory leak stopped - approaching memory limit', {
+        heap_used_mb: Math.round(heapUsedMB),
+        max_memory_mb: maxMemoryMB,
+        total_chunks: memoryLeakArray.length,
+      });
+      stopMemoryLeak();
+      return;
+    }
+    
+    // Allocate smaller chunks (10 MB instead of 50 MB) with longer intervals
+    const chunk = Buffer.alloc(10 * 1024 * 1024, 'x');
     memoryLeakArray.push(chunk);
     log('warn', 'memory leak chunk added', {
       total_chunks: memoryLeakArray.length,
       heap_used_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
     });
-  }, 2000);
+  }, 5000); // Increased interval from 2s to 5s
 }
 
 function stopMemoryLeak() {
@@ -96,6 +111,11 @@ function stopMemoryLeak() {
     memoryLeakInterval = null;
   }
   memoryLeakArray = [];
+  // Force garbage collection if available
+  if (global.gc) {
+    global.gc();
+  }
+  log('info', 'memory leak stopped and memory cleared');
 }
 
 // ─── Active chaos mode at startup ─────────────────────────────────────────
@@ -114,7 +134,7 @@ if (CHAOS_MODE === 'memory') {
 app.get('/', (req, res) => {
   res.json({
     service: 'demo-app',
-    version: '1.0.0',
+    version: '1.0.1', // Updated version
     chaos_mode: CHAOS_MODE,
     uptime_seconds: Math.floor(process.uptime()),
   });
