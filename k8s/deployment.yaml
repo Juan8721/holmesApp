@@ -23,6 +23,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
+        kubectl.kubernetes.io/restartedAt: "2026-04-27T16:22:37Z"
     spec:
       containers:
       - name: demo-app
@@ -47,8 +48,8 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 15
           timeoutSeconds: 5
-          failureThreshold: 3
           successThreshold: 1
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /api/health
@@ -57,8 +58,8 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
-          failureThreshold: 3
           successThreshold: 1
+          failureThreshold: 3
         resources:
           requests:
             cpu: 100m
@@ -66,9 +67,5 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
-      dnsPolicy: ClusterFirst
-      schedulerName: default-scheduler
