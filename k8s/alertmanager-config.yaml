@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmanager-config
+  namespace: observability
+spec:
+  receivers:
+    - name: "null"
+  route:
+    receiver: "null"
+    routes:
+      # Route Watchdog alerts to null receiver (standard practice)
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: Watchdog
+      # Route InfoInhibitor to null receiver
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: InfoInhibitor
