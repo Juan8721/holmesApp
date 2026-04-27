@@ -22,7 +22,7 @@ spec:
       containers:
       - env:
         - name: CHAOS_MODE
-          value: none
+          value: none  # Explicitly set to 'none' to prevent crashes
         - name: CHAOS_TOKEN
           value: workshop2024
         - name: PORT
