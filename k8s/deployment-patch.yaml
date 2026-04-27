@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: app
+spec:
+  template:
+    spec:
+      containers:
+      - name: demo-app
+        env:
+        - name: CHAOS_MODE
+          value: "none"  # Changed from "crash" to "none" to prevent immediate crashes
+        - name: CHAOS_TOKEN
+          value: "workshop2024"
+        - name: PORT
+          value: "3000"
+---
+# Alternative: Use a ConfigMap for better configuration management
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-app-config
+  namespace: app
+data:
+  CHAOS_MODE: "none"
+  CHAOS_TOKEN: "workshop2024"
+  PORT: "3000"
+---
+# Deployment using ConfigMap (recommended approach)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app-with-configmap
+  namespace: app
+spec:
+  template:
+    spec:
+      containers:
+      - name: demo-app
+        envFrom:
+        - configMapRef:
+            name: demo-app-config
