@@ -1,0 +1,53 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: eks-version-mismatch-alert-fix
+  namespace: observability
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prom-stack
+spec:
+  groups:
+  - name: kubernetes-system-version-mismatch-eks
+    rules:
+    # Modified KubeVersionMismatch alert rule that accounts for EKS mixed versions
+    - alert: KubeVersionMismatch
+      expr: |
+        count by (cluster) (
+          count by (git_version, cluster) (
+            label_replace(
+              kubernetes_build_info{job!~"kube-dns|coredns"}, 
+              "git_version", "$1", "git_version", "(v[0-9]*.[0-9]*).*"
+            )
+          )
+        ) > 1
+        and on() (
+          # Only fire if version difference is significant (major.minor difference > 1)
+          # This prevents false positives in EKS where API server and kubelet versions
+          # can legitimately differ by one minor version during upgrades
+          (
+            max by (cluster) (
+              label_replace(
+                kubernetes_build_info{job!~"kube-dns|coredns"}, 
+                "minor_version", "$1", "git_version", "v[0-9]*\.([0-9]*).*"
+              )
+            ) - 
+            min by (cluster) (
+              label_replace(
+                kubernetes_build_info{job!~"kube-dns|coredns"}, 
+                "minor_version", "$1", "git_version", "v[0-9]*\.([0-9]*).*"
+              )
+            )
+          ) > 1
+        )
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        description: |
+          There are {{ $value }} different semantic versions of Kubernetes components running on cluster {{ $labels.cluster }}.
+          This alert only fires when the version difference is significant (>1 minor version).
+          In EKS clusters, it's normal for API server and kubelet to differ by one minor version during upgrades.
+        summary: Significant semantic version mismatch of Kubernetes components detected.
+        runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubeversionmismatch
+        eks_note: "Modified for EKS compatibility - allows 1 minor version difference between components."
